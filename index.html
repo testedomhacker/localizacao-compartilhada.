@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compartilhar Localização e IP</title>
+
+    <!-- Meta tags para pré-visualização no WhatsApp (OG Image) -->
+    <meta property="og:title" content="Minha Localização Atual" />
+    <meta property="og:description" content="Clique para ver minha posição em tempo real e meu endereço IP." />
+    <!-- 
+        IMPORTANTE: Substitua a URL abaixo pela URL direta da imagem que você quer que apareça na pré-visualização do WhatsApp.
+    -->
+    <meta property="og:image" content="https://placehold.co/1200x630/25D366/ffffff/png?text=LOCALIZACAO+ATIVA" /> 
+    <meta property="og:type" content="website" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .upload-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .upload-container:hover {
+            border-color: #667eea;
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        #image-preview {
+            margin: 20px auto;
+            width: 100%;
+            max-width: 250px;
+            height: auto;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .location-status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .location-status.error {
+            background: #ffe6e6;
+            color: #d32f2f;
+        }
+
+        .location-status.success {
+            background: #e6f7ff;
+            color: #1976d2;
+        }
+        
+        #https-warning {
+            background: #fefcbf;
+            color: #854a00;
+            border: 1px solid #ffcc00;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            margin: 10px 0;
+            width: 100%;
+            box-shadow: 0 4px 10px rgba(118, 75, 162, 0.4);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(118, 75, 162, 0.6);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-share {
+            background: #25D366; 
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.4);
+        }
+        
+        .btn-share:hover:not(:disabled) {
+             transform: translateY(-3px);
+             box-shadow: 0 6px 15px rgba(37, 211, 102, 0.6);
+        }
+
+        .location-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            text-align: left;
+            border: 1px solid #eee;
+        }
+
+        .location-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .location-info p {
+            margin-bottom: 5px;
+            word-break: break-word; 
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Estilo do Modal (substituindo alert/confirm) */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: opacity 0.2s;
+        }
+
+        .modal-actions .btn-confirm {
+            background: #25D366;
+            color: white;
+        }
+
+        .modal-actions .btn-cancel {
+            background: #ddd;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Compartilhamento Avançado</h1>
+        
+        <!-- Aviso de Segurança/HTTPS -->
+        <div id="https-warning" role="alert" style="display: none;">
+            <p>🚨 **ERRO DE SEGURANÇA:** A geolocalização está bloqueada. Esta página precisa ser acessada via **HTTPS** ou `localhost` para que o pop-up de permissão apareça.</p>
+        </div>
+        
+        <!-- Área de Upload de Imagem (Apenas para pré-visualização local) -->
+        <div class="upload-container" id="upload-area">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Clique para escolher uma foto local (Apenas para prévia na página)</div>
+            <input type="file" id="image-input" accept="image/*" style="display: none;">
+        </div>
+        
+        <img id="image-preview" alt="Prévia da imagem selecionada">
+        
+        <!-- Status e Erros -->
+        <div class="location-status" id="location-status">
+            Localização: Pressione o botão para começar.
+        </div>
+        
+        <!-- Botão de Obter Localização -->
+        <button class="btn" id="location-btn" disabled>
+            Habilitar Localização
+        </button>
+        
+        <!-- Informações Detalhadas de Localização e IP -->
+        <div class="location-info" id="location-info" style="display: none;">
+            <h3>Detalhes Obtidos:</h3>
+            <p id="ip-address">Endereço IP: <span class="loading-spinner" style="border-top-color:#764ba2;"></span></p>
+            <p id="coordinates">Coordenadas: --</p>
+            <p id="accuracy">Precisão: --</p>
+        </div>
+        
+        <!-- Botão de Compartilhar -->
+        <button class="btn btn-share" id="share-btn" disabled>
+            Compartilhar Localização/IP via WhatsApp
+        </button>
+    </div>
+
+    <!-- Modal para substituir alerts e confirms -->
+    <div id="customModal" class="modal">
+        <div class="modal-content">
+            <p id="modalMessage">Mensagem do modal.</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="modalCancel">Cancelar</button>
+                <button class="btn-confirm" id="modalConfirm">Continuar</button>
+                <button class="btn-confirm" id="modalOK" style="display: none;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('image-input');
+        const uploadArea = document.getElementById('upload-area');
+        const imagePreview = document.getElementById('image-preview');
+        const locationBtn = document.getElementById('location-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const locationStatus = document.getElementById('location-status');
+        const locationInfo = document.getElementById('location-info');
+        const ipAddressDisplay = document.getElementById('ip-address');
+        const coordinatesDisplay = document.getElementById('coordinates');
+        const accuracyDisplay = document.getElementById('accuracy');
+        const httpsWarning = document.getElementById('https-warning');
+        
+        const modal = document.getElementById('customModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirm = document.getElementById('modalConfirm');
+        const modalCancel = document.getElementById('modalCancel');
+        const modalOK = document.getElementById('modalOK');
+
+        let userLocation = null;
+        let userIP = 'Obtendo...';
+        let isProcessing = false;
+
+        // --- Funções de Modal Personalizado (Substituindo alert/confirm) ---
+        
+        function showModal(message, type = 'alert') {
+            return new Promise(resolve => {
+                modalMessage.textContent = message;
+                modal.style.display = 'flex';
+                
+                modalConfirm.style.display = 'none';
+                modalCancel.style.display = 'none';
+                modalOK.style.display = 'none';
+
+                modalConfirm.onclick = null;
+                modalCancel.onclick = null;
+                modalOK.onclick = null;
+
+                if (type === 'confirm') {
+                    modalConfirm.style.display = 'inline-block';
+                    modalCancel.style.display = 'inline-block';
+                    modalConfirm.onclick = () => { modal.style.display = 'none'; resolve(true); };
+                    modalCancel.onclick = () => { modal.style.display = 'none'; resolve(false); };
+                } else { 
+                    modalOK.style.display = 'inline-block';
+                    modalOK.onclick = () => { modal.style.display = 'none'; resolve(); };
+                }
+            });
+        }
+
+        // --- Funções de Processamento de Dados ---
+
+        // 1. Obter Endereço IP
+        async function getIPAddress() {
+            try {
+                ipAddressDisplay.innerHTML = 'Endereço IP: <span class="loading-spinner" style="border-top-color:#764ba2;"></span> Obtendo...'; 
+                const response = await fetch('https://api.ipify.org?format=json');
+                if (!response.ok) throw new Error('Falha ao obter IP');
+                const data = await response.json();
+                userIP = data.ip || 'Não disponível';
+                ipAddressDisplay.textContent = `Endereço IP: ${userIP}`;
+            } catch (error) {
+                userIP = 'Erro ao obter IP';
+                ipAddressDisplay.textContent = `Endereço IP: ${userIP}`;
+                console.error('Erro ao obter IP:', error);
+            }
+        }
+
+        // 2. Obter Localização (Com Alta Precisão)
+        function getLocation() {
+            if (isProcessing) return;
+            isProcessing = true;
+            shareBtn.disabled = true;
+
+            if (!navigator.geolocation) {
+                showModal('Geolocalização não é suportada por este navegador.', 'alert');
+                locationStatus.textContent = 'Localização: Não suportada.';
+                isProcessing = false;
+                return;
+            }
+
+            locationBtn.disabled = true;
+            locationBtn.innerHTML = '<span class="loading-spinner"></span> Aguardando permissão (pop-up)...';
+            locationStatus.textContent = 'Localização: Solicitando permissão... (Verifique o pop-up do navegador)';
+            locationStatus.className = 'location-status';
+            locationInfo.style.display = 'block';
+
+            getIPAddress();
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    
+                    locationStatus.textContent = 'Localização: Obtida com sucesso!';
+                    locationStatus.className = 'location-status success';
+                    
+                    coordinatesDisplay.textContent = `Coordenadas: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
+                    accuracyDisplay.textContent = `Precisão: ± ${userLocation.accuracy.toFixed(1)} metros`;
+                    
+                    shareBtn.disabled = false;
+                    locationBtn.innerHTML = 'Localização Obtida ✔';
+                    locationBtn.classList.remove('btn');
+                    locationBtn.classList.add('location-status', 'success');
+                    isProcessing = false;
+                },
+                (error) => {
+                    handleLocationError(error);
+                    isProcessing = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0 
+                }
+            );
+        }
+
+        function handleLocationError(error) {
+            let errorMessage = 'Erro ao obter localização: ';
+            let guidance = 'Tente novamente.';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = 'PERMISSÃO NEGADA!';
+                    guidance = 'Você precisa aceitar o pop-up do navegador (ou redefinir a permissão nas configurações).';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = 'Localização Indisponível!';
+                    guidance = 'Sinal GPS/Wi-Fi fraco. Tente em um local aberto.';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = 'Tempo Limite Excedido!';
+                    guidance = 'A busca demorou muito. Tente novamente.';
+                    break;
+                default:
+                    errorMessage += 'Desconhecido.';
+            }
+
+            showModal(`${errorMessage}. ${guidance}`, 'alert');
+            locationStatus.textContent = `Localização: ${errorMessage}`;
+            locationStatus.className = 'location-status error';
+            locationBtn.disabled = false;
+            locationBtn.innerHTML = 'Tentar Novamente';
+            locationBtn.classList.remove('location-status', 'success');
+            locationBtn.classList.add('btn');
+        }
+
+
+        // 3. Compartilhar via WhatsApp
+        async function shareViaWhatsApp() {
+            if (!userLocation) {
+                await showModal('Por favor, obtenha sua localização primeiro.', 'alert');
+                return;
+            }
+
+            let continueShare = true;
+            
+            if (imageInput.files.length === 0) {
+                 continueShare = await showModal(
+                    'Nenhuma imagem local selecionada. Deseja continuar compartilhando apenas a localização e o IP?', 
+                    'confirm'
+                );
+            }
+
+            if (continueShare) {
+                const mapsUrl = `https://www.google.com/maps?q=${userLocation.latitude},${userLocation.longitude}&z=18`; 
+                
+                const message = 
+                    `📍 Minha Localização Atual:\n` +
+                    `Coordenadas (Alta Precisão): ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}\n` +
+                    `Precisão Aprox.: ± ${userLocation.accuracy.toFixed(1)} metros\n` +
+                    `Endereço IP: ${userIP}\n\n` +
+                    `🔗 Abrir no Google Maps:\n${mapsUrl}`;
+                
+                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                
+                window.open(whatsappUrl, '_blank');
+            }
+        }
+
+        // --- Event Listeners e Inicialização ---
+
+        uploadArea.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    uploadArea.style.display = 'none';
+                    showModal('A imagem foi carregada na página. Lembre-se: para a pré-visualização no WhatsApp, a imagem precisa ser hospedada publicamente e a tag "og:image" no código DEVE ter a URL pública.', 'alert');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        locationBtn.addEventListener('click', getLocation);
+        shareBtn.addEventListener('click', shareViaWhatsApp);
+        
+        // Verificação de segurança na inicialização
+        window.onload = function() {
+            // Se o protocolo for HTTPS (ou localhost/file), ativa o botão. Caso contrário, mostra o aviso.
+            if (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
+                locationBtn.disabled = false;
+                locationBtn.innerHTML = 'Habilitar Localização';
+                httpsWarning.style.display = 'none';
+            } else {
+                httpsWarning.style.display = 'block';
+                locationBtn.disabled = true;
+                locationBtn.innerHTML = 'Acesso Bloqueado (USE HTTPS)';
+            }
+        }
+    </script>
+</body>
+</html>
